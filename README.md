@@ -4,9 +4,10 @@ A Bangla "outbid" site. Whoever pays the most gets their message in the top spot
 
 ## Run locally
 
-Needs **Node.js 22.5 or newer**. There are no npm packages to install.
+Needs **Node.js 20 or newer**.
 
 ```bash
+npm install
 cp .env.example .env      # then set a strong ADMIN_PASSWORD
 node --env-file=.env server.js
 ```
@@ -24,8 +25,38 @@ Open http://localhost:3000. The admin panel is at http://localhost:3000/admin.
 2. The visitor transfers the money with that reference code and submits the transaction ID. Each transaction ID can be used only once.
 3. The admin compares the ID with the bank statement and approves or rejects the bid. The highest approved bid takes the top spot.
 
-All data is stored in `data.db` (SQLite). Back up that file. Unpaid drafts older than 24 hours are deleted automatically.
+Data is stored in a local `data.db` file, or in Turso when `TURSO_DATABASE_URL` is set. Unpaid drafts older than 24 hours are deleted automatically.
 
-## Deploy
+## Deploy for free (Render + Turso)
 
-Use any host that runs a long-lived Node process and has a persistent disk, such as a VPS, Railway or Render with a disk attached. Serverless platforms like Vercel won't work, because SQLite needs a disk that persists. Put the site behind HTTPS and set `COOKIE_SECURE=1` and `TRUST_PROXY=1`.
+**Render** runs the server for free. Its disk is wiped on every restart, so the bids are stored in **Turso**, a free hosted SQLite database.
+
+Free-plan limits: Render puts the site to sleep after 15 minutes with no visitors, and the first visit after that takes about a minute to load. Turso's free plan includes 5 GB of storage.
+
+### 1. Create the database on Turso
+1. Sign up at https://turso.tech (GitHub login works).
+2. Create a database, for example `dakdao`, in the region closest to Bangladesh (Mumbai or Singapore).
+3. Copy the database URL (starts with `libsql://`).
+4. Create a token for the database and copy it.
+
+### 2. Put the code on GitHub
+1. Create a new **private** repository at https://github.com/new, for example `dakdao`. Don't add a README.
+2. Push the code:
+   ```bash
+   git remote add origin https://github.com/YOUR-USERNAME/dakdao.git
+   git push -u origin main
+   ```
+
+### 3. Deploy on Render
+1. Sign up at https://render.com with GitHub.
+2. Click **New → Blueprint**, pick the `dakdao` repository and confirm. Render reads `render.yaml`.
+3. Render asks for three secret values:
+   - `ADMIN_PASSWORD`: a strong password, at least 8 characters
+   - `TURSO_DATABASE_URL`: the URL from step 1
+   - `TURSO_AUTH_TOKEN`: the token from step 1
+4. Click **Apply**. After a few minutes the site is live at `https://dakdao.onrender.com` (or a similar address). The admin panel is at `/admin`.
+
+When you change something, commit and `git push`; Render redeploys automatically.
+
+### Optional: keep the site awake
+To avoid the one-minute wake-up, a free uptime monitor (for example UptimeRobot) can request `https://YOUR-SITE.onrender.com/api/health` every 10 minutes. That uses about 730 of Render's 750 free hours a month, which is enough for one site.
